@@ -1,18 +1,17 @@
-import sys
 import os
 import zipfile
 import random
 
-train_im_path = "/yolov8/data/images/train"
-train_lbl_path = "/yolov8/data/labels/train"
-val_im_path = "/yolov8/data/images/val"
-val_lbl_path = "/yolov8/data/labels/val"
+train_im_path = "/data/images/train"
+train_lbl_path = "/data/labels/train"
+val_im_path = "/data/images/val"
+val_lbl_path = "/data/labels/val"
 
-src_path = os.path.dirname(os.getcwd()) + "/yolov8/datasets/"    # folder with zip files
+src_path = os.path.dirname(os.getcwd()) + "/datasets/"    # folder with zip files
 tgt_im = os.path.dirname(os.getcwd()) + train_im_path    # folder to save the extracted file images
 tgt_lbl = os.path.dirname(os.getcwd()) + train_lbl_path   # folder to save the extracted file labels
 
-train_split = 0.80;
+train_split = 0.80 # percent of data needs to be used for training
 
 cntr = 0
 
@@ -24,8 +23,23 @@ def uid(id_str):
     uniqueid = id_str.split(".")[0]
     return uniqueid
 
+
+def train_val_path():
+    """
+    function to decide if data file is for training or validation
+    """
+    if random.random() < (1-train_split):
+        dest_im_path = val_im_path
+        dest_lbl_pth = val_lbl_path
+    else:
+        dest_im_path = train_im_path
+        dest_lbl_pth = train_lbl_path    
+
+    return (dest_im_path, dest_lbl_pth)    
+
+
 def zipextract(zip_file, src_folder, dest_folder_path, train_split, dest_folder_img, dest_folder_lbl):
-    
+    global cntr
     print('reading zip: {}'.format(zip_file))
     myzip = zipfile.ZipFile(os.path.join(src_folder, zip_file),'r')    # open zip file object
     for zf_file_name in sorted(myzip.namelist()):    # iterate through each file name   
@@ -33,21 +47,23 @@ def zipextract(zip_file, src_folder, dest_folder_path, train_split, dest_folder_
             filename = os.path.basename(zf_file_name) 
             extension = os.path.splitext(filename)[1]
             
-            # if extension is .PNG, send it to images folder else to labels folder
-            if random.random() < (1-train_split):
+            if (cntr%2==0): # file is image
+                # set data file is for ttraining or validation  
+                dest_paths = train_val_path()
+                # if extension is .PNG, send it to images folder else to labels folder
                 if extension==".PNG":
-                    destination = os.path.abspath(dest_folder_path + val_im_path)
+                    destination = os.path.abspath(dest_folder_path + dest_paths[0])
                 if extension==".txt":
-                    destination = os.path.abspath(dest_folder_path + val_lbl_path)
-            else:
+                    destination = os.path.abspath(dest_folder_path + dest_paths[1])
+            else: # file is label
+                # if extension is .PNG, send it to images folder else to labels folder
                 if extension==".PNG":
-                    destination = os.path.abspath(dest_folder_path + train_im_path)
+                    destination = os.path.abspath(dest_folder_path + dest_paths[0])
                 if extension==".txt":
-                    destination = os.path.abspath(dest_folder_path + train_lbl_path)        
-            # if extension==".PNG":
-            #      destination = os.path.abspath(dest_folder_img)
-            # if extension==".txt":
-            #      destination = os.path.abspath(dest_folder_lbl)     
+                    destination = os.path.abspath(dest_folder_path + dest_paths[1])        
+
+            cntr+=1
+            
             print("file name: " + filename)
             print("uid: " + uid(id_str=zip_file))
             print("destination: " + destination)
@@ -71,6 +87,7 @@ def zipextract(zip_file, src_folder, dest_folder_path, train_split, dest_folder_
     myzip.close()
 
 for f in os.listdir(src_path):
+        cntr = 0
         if f.endswith(".zip"):
             # print(f)
             zipextract(zip_file=f, src_folder=src_path, dest_folder_path=os.path.dirname(os.getcwd()), train_split=train_split, dest_folder_img=tgt_im, dest_folder_lbl=tgt_lbl)
